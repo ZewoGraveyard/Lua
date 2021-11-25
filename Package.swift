@@ -1,8 +1,16 @@
+// swift-tools-version:5.5.0
 import PackageDescription
 
 let package = Package(
     name: "Lua",
+    products: [
+        .library(name: "Lua", targets: ["Lua"]),
+    ],
     dependencies: [
-        .Package(url: "https://github.com/Zewo/CLua.git", majorVersion: 0, minor: 1),
+        .package(path: "../CLua")
+    ],
+    targets: [
+        .target(name: "Lua", dependencies: ["CLua"]),
+        .testTarget(name: "LuaTests", dependencies: ["Lua"])
     ]
 )

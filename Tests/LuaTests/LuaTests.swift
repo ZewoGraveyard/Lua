@@ -14,7 +14,11 @@ class LuaTests : XCTestCase {
         let lua = Lua()
         let stringx = lua.createTable()
 
-        stringx.create(function: "split") { (subject: String, separator: String) in
+        stringx.create(function: "split") { [weak lua] (subject: String, separator: String) in
+            guard let lua = lua else {
+                return []
+            }
+
             let components = subject.components(separatedBy: separator)
 
             let result = lua.createTable()
@@ -37,7 +41,7 @@ class LuaTests : XCTestCase {
     }
 
     func testCustomType() throws {
-        class Note : CustomTypeInstance {
+        class Note: CustomTypeInstance {
             var name: String
 
             init(name: String) {
@@ -46,6 +50,7 @@ class LuaTests : XCTestCase {
         }
 
         let lua = Lua()
+
         let note = lua.create(type: Note.self)
 
         note.create(method: "setName") { (note, name: String) in
@@ -57,7 +62,11 @@ class LuaTests : XCTestCase {
             return [note.name]
         }
 
-        note.create(function: "new") { (name: String) in
+        note.create(function: "new") { [weak lua] (name: String) in
+            guard let lua = lua else {
+                return []
+            }
+
             let note = Note(name: name)
             let data = lua.createUserdata(note)
             return [data]
@@ -79,6 +88,7 @@ class LuaTests : XCTestCase {
 
         try lua.eval("myNote:setName('odd')")
         XCTAssert(myNote.name == "odd")
+        print("Bye lua", lua)
     }
 
     func testCustomTypeStruct() throws {
@@ -94,7 +104,11 @@ class LuaTests : XCTestCase {
             return [note.name]
         }
 
-        note.create(function: "new") { (name: String) in
+        note.create(function: "new") { [weak lua] (name: String) in
+            guard let lua = lua else {
+                return []
+            }
+
             let note = Note(name: name)
             let data = lua.createUserdata(note)
             return [data]
@@ -105,18 +119,17 @@ class LuaTests : XCTestCase {
         try lua.eval("myNote = note.new('a custom note')")
         XCTAssert(lua.globals["myNote"] is Userdata)
 
-        let myNote: Note = (lua.globals["myNote"] as! Userdata).toCustomType()
+        var myNote: Note = (lua.globals["myNote"] as! Userdata).toCustomType()
         XCTAssert(myNote.name == "a custom note")
-    }
-}
 
-extension LuaTests {
-    static var allTests : [(String, (LuaTests) -> () throws -> Void)] {
-        return [
-           ("testFundamentals", testFundamentals),
-           ("testStringX", testStringX),
-           ("testCustomType", testCustomType),
-           ("testCustomTypeStruct", testCustomTypeStruct),
-        ]
+        myNote.name = "now from XCTest"
+        try lua.eval("print(myNote:getName())")
+
+        try lua.eval("myNote:setName('even')")
+        XCTAssert(myNote.name == "even")
+
+        try lua.eval("myNote:setName('odd')")
+        XCTAssert(myNote.name == "odd")
+        print("Bye lua", lua)
     }
 }
